@@ -1,0 +1,100 @@
+version: "3.8"
+
+# Sistema de Monitorização de Rutura de Medicamentos - Uíge, Angola
+
+# INICIAR:  docker compose up -d
+# PARAR:    docker compose down
+# LIMPAR:   docker compose down -v
+
+services:
+
+  mongo-primary:
+    image: mongo:latest
+    container_name: mongo-primary
+    hostname: mongo-primary
+    ports:
+      - "27017:27017"
+    command: mongod --replSet rs0 --bind_ip_all --wiredTigerCacheSizeGB 1
+    volumes:
+      - mongo_primary_data:/data/db
+      - ./queries.js:/scripts/queries.js:ro
+    networks:
+      - mongo_net
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping').ok", "--quiet"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+    restart: unless-stopped
+
+  mongo-secondary1:
+    image: mongo:latest
+    container_name: mongo-secondary1
+    hostname: mongo-secondary1
+    ports:
+      - "27018:27017"
+    command: mongod --replSet rs0 --bind_ip_all --wiredTigerCacheSizeGB 0.5
+    volumes:
+      - mongo_secondary1_data:/data/db
+    networks:
+      - mongo_net
+    depends_on:
+      mongo-primary:
+        condition: service_healthy
+    restart: unless-stopped
+
+  mongo-secondary2:
+    image: mongo:latest
+    container_name: mongo-secondary2
+    hostname: mongo-secondary2
+    ports:
+      - "27019:27017"
+    command: mongod --replSet rs0 --bind_ip_all --wiredTigerCacheSizeGB 0.5
+    volumes:
+      - mongo_secondary2_data:/data/db
+    networks:
+      - mongo_net
+    depends_on:
+      mongo-primary:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # Serviço auxiliar que inicializa o Replica Set automaticamente
+  mongo-init:
+    image: mongo:latest
+    container_name: mongo-init
+    depends_on:
+      mongo-primary:
+        condition: service_healthy
+      mongo-secondary1:
+        condition: service_started
+      mongo-secondary2:
+        condition: service_started
+    networks:
+      - mongo_net
+    command: >
+      mongosh --host mongo-primary:27017 --eval "
+        rs.initiate({
+          _id: 'rs0',
+          members: [
+            { _id: 0, host: 'mongo-primary:27017',   priority: 2 },
+            { _id: 1, host: 'mongo-secondary1:27017', priority: 1 },
+            { _id: 2, host: 'mongo-secondary2:27017', priority: 1 }
+          ]
+        });
+        print('Replica Set inicializado com sucesso.');
+      "
+    restart: "no"
+
+volumes:
+  mongo_primary_data:
+    driver: local
+  mongo_secondary1_data:
+    driver: local
+  mongo_secondary2_data:
+    driver: local
+
+networks:
+  mongo_net:
+    driver: bridge
