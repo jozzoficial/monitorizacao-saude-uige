@@ -2,7 +2,7 @@
 
 **Tema:** Sistema de Monitorização de Rutura de Medicamentos Essenciais e Surtos de Malária na Província do Uíge
 
-**Autor:** JOÃO JOSÉ ANTÓNIO DA SILVA
+**Autor:** JOÃO JOSÉ ANTÓNIO DA SILVA | FRANCISCO BRÁULIO FIGUEIREDO ANTÓNIO | KUMBI MANUEL DOMINGOS | PAULO BUNGA RODRIGUES
 **Data:** Maio 2026  
 **Docente:** Moyo Kanivengidio
 
